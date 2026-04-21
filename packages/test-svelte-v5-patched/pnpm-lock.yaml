@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   svelte@5.55.4:
-    hash: 7342ddbe5836f09f3a8524f7f80046f6ad46dd5acb37ba214924ebc6ae2e1b8b
+    hash: 7e2772032b5644521ecee897a348a1a262783958f0d5ee1b4bb07c1f260f6e0d
     path: patches/svelte@5.55.4.patch
 
 importers:
@@ -15,7 +15,7 @@ importers:
     dependencies:
       svelte:
         specifier: 5.55.4
-        version: 5.55.4(patch_hash=7342ddbe5836f09f3a8524f7f80046f6ad46dd5acb37ba214924ebc6ae2e1b8b)
+        version: 5.55.4(patch_hash=7e2772032b5644521ecee897a348a1a262783958f0d5ee1b4bb07c1f260f6e0d)
     devDependencies:
       '@swc/core':
         specifier: ^1.10.0
@@ -1107,7 +1107,7 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  svelte@5.55.4(patch_hash=7342ddbe5836f09f3a8524f7f80046f6ad46dd5acb37ba214924ebc6ae2e1b8b):
+  svelte@5.55.4(patch_hash=7e2772032b5644521ecee897a348a1a262783958f0d5ee1b4bb07c1f260f6e0d):
     dependencies:
       '@jridgewell/remapping': 2.3.5
       '@jridgewell/sourcemap-codec': 1.5.5

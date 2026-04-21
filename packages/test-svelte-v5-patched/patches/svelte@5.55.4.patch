@@ -1,16 +1,17 @@
 diff --git a/package.json b/package.json
-index fca90b2bca03dc9a82d5d2efce1595f7288a0b8f..a25e180c4677b7b102ae1335b79c315cc167810b 100644
 --- a/package.json
 +++ b/package.json
-@@ -19,6 +19,12 @@
+@@ -19,6 +19,14 @@
    ],
    "module": "src/index-client.js",
    "main": "src/index-client.js",
 +  "sideEffects": [
 +    "./src/internal/disclose-version.js",
-+    "./src/internal/flags/legacy.js",
 +    "./src/internal/flags/async.js",
-+    "./src/internal/flags/tracing.js"
++    "./src/internal/flags/legacy.js",
++    "./src/internal/flags/tracing.js",
++    "./src/internal/index.js",
++    "./tests/**"
 +  ],
    "exports": {
      ".": {
