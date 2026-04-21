@@ -15,8 +15,8 @@ v5 runtime.
 ```
   metric          original         patched       savings
   ─────────────────────────────────────────────────────────────
-  tree-shaken        280,760 B       43,041 B     237,719 B   (84.7%)
-  minified            10,412 B        4,021 B       6,391 B   (61.4%)
+  tree-shaken        273,632 B       35,913 B     237,719 B   (86.9%)
+  minified             7,726 B        1,490 B       6,236 B   (80.7%)
 ```
 
 The **tree-shaken** row is the direct signature of the patch working:
@@ -51,16 +51,13 @@ playground-svelte-bundle-size/
 │   ├── test-svelte-original/    # plain svelte install
 │   │   ├── package.json
 │   │   ├── webpack.config.js
-│   │   └── src/
-│   │       ├── index.js
-│   │       ├── stores/          # store factories (auth, router, theme, …)
-│   │       ├── components/      # consumers that call .subscribe()
-│   │       └── hooks/           # useSyncExternalStore-style adapter
+│   │   └── src/index.js         # 12 lines — imports writable/readable/
+│   │                            #            derived/get and uses each
 │   └── test-svelte-patched/     # same code; pnpm patch on svelte
 │       ├── package.json         # ← declares pnpm.patchedDependencies
 │       ├── patches/svelte@5.55.4.patch
 │       ├── webpack.config.js
-│       └── src/                 # byte-identical to original
+│       └── src/index.js         # byte-identical to original
 ```
 
 Each package is its own independent `pnpm` project (no workspace). This
@@ -105,18 +102,13 @@ enforcing all along.
 
 ## What the demo code demonstrates
 
-The demo mirrors how a private repo uses Svelte: only as a reactive
-store library, called from non-Svelte code. Zero `.svelte` files. Store
-factories live in `src/stores/` (auth, router, theme, workspaces, pages)
-and return `{ subscribe, … }` wrappers. Consumer modules in
-`src/components/` receive the stores as parameters and subscribe via a
-`useSyncExternalStore`-style helper in `src/hooks/subscribeExternal.js`.
-This is the pattern the real codebase uses to bridge Svelte stores to
-React.
-
-The demo imports exactly what the real codebase imports from
-`svelte/store` (`writable`, `readable`, `derived`, `get`) and nothing
-else.
+`src/index.js` mirrors how a private repo uses Svelte: only as a
+reactive store library, called from non-Svelte code. Zero `.svelte`
+files. It imports exactly what the real codebase imports from
+`svelte/store` (`writable`, `readable`, `derived`, `get`) and exercises
+each one. The savings come from the patch interacting with webpack and
+SWC, not from how elaborate the app code is — a 12-line demo shows the
+same delta as a multi-module version.
 
 ## Why the minifier choice matters
 
