@@ -1,0 +1,18 @@
+{
+  "name": "test-svelte-v4",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bundles the same svelte/store code as the v5 packages, but installs Svelte 4.x. Establishes the pre-regression baseline for the v4 → v5 bundle-size comparison.",
+  "scripts": {
+    "build": "rm -rf dist && webpack --env raw && webpack"
+  },
+  "dependencies": {
+    "svelte": "4.2.20"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.10.0",
+    "terser-webpack-plugin": "^5.3.10",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  }
+}

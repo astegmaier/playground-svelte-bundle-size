@@ -1,8 +1,8 @@
 {
-  "name": "test-svelte-patched",
+  "name": "test-svelte-v5-patched",
   "version": "1.0.0",
   "private": true,
-  "description": "Identical to test-svelte-original, but installs svelte with a pnpm patch that adds a 'sideEffects' array to svelte's package.json.",
+  "description": "Identical to test-svelte-v5, but installs Svelte 5 with a pnpm patch that adds a 'sideEffects' array to svelte's package.json.",
   "scripts": {
     "build": "rm -rf dist && webpack --env raw && webpack"
   },

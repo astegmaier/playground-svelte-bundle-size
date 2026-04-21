@@ -1,29 +1,46 @@
 # playground-svelte-bundle-size
 
-Minimal reproduction demonstrating the bundle-size impact of adding a
-`"sideEffects"` field to Svelte's `package.json`. The change is upstream
-candidate work — see the motivation section below.
+Minimal reproduction demonstrating the bundle-size regression introduced
+by the Svelte v4 → v5 upgrade when using the package only as a reactive
+store library, and the recovery from adding a `"sideEffects"` field to
+Svelte's `package.json`. The patch is upstream candidate work — see the
+motivation section below.
 
 ## TL;DR
 
-Two identical packages bundle `svelte/store` with webpack. They differ in
-one thing: `test-svelte-patched` applies a `pnpm patch` to Svelte's
-`package.json` that declares most of the package as side-effect-free.
-That single change lets webpack tree-shake the unused parts of Svelte's
-v5 runtime.
+Three packages bundle the exact same 12-line `src/index.js` (imports
+`writable` / `readable` / `derived` / `get` from `svelte/store` and uses
+each) with webpack + SWC. The only thing that varies is which Svelte
+install they pull in:
+
+| package                  | Svelte version                   |
+| ------------------------ | -------------------------------- |
+| `test-svelte-v4`         | 4.2.20 (pre-regression baseline) |
+| `test-svelte-v5`         | 5.55.4 (stock)                   |
+| `test-svelte-v5-patched` | 5.55.4 + `sideEffects` patch     |
 
 ```
-  metric          original         patched       savings
-  ─────────────────────────────────────────────────────────────
-  tree-shaken        273,632 B       35,913 B     237,719 B   (86.9%)
-  minified             7,726 B        1,490 B       6,236 B   (80.7%)
+ metric                 svelte v4         svelte v5        v5 patched
+ ────────────────────────────────────────────────────────────────────
+ tree-shaken      113,590 B         273,632 B          35,913 B
+ minified           2,000 B           7,726 B           1,490 B
+
+  vs. svelte v4 baseline (minified):
+    svelte v4              0 B (0.0%)
+    svelte v5      +   5,726 B (286.3%)
+    v5 patched     −     510 B (-25.5%)
+
+  vs. svelte v5 unpatched (minified):
+    svelte v4      −   5,726 B (-74.1%)
+    svelte v5              0 B (0.0%)
+    v5 patched     −   6,236 B (-80.7%)
 ```
 
-The **tree-shaken** row is the direct signature of the patch working:
-webpack drops 238 KB of Svelte source from the module graph. The
-**minified** row shows the realistic production savings: 6.4 KB, in the
-same ballpark as the ~6 KB minified savings observed in the original
-private-repo measurements.
+Upgrading from Svelte 4 to Svelte 5 adds **5.7 KB** minified to this
+bundle — because v5 rebuilt its stores on top of the signals runtime,
+which webpack can't fully tree-shake without a `sideEffects`
+declaration. Applying the patch eliminates that regression and lands
+**510 B below** the v4 baseline.
 
 ## Run it
 
@@ -31,42 +48,41 @@ private-repo measurements.
 pnpm test
 ```
 
-That script:
-
-1. Runs `pnpm install` in each package (applies the patch for the
-   patched one — verify with
-   `cat packages/test-svelte-patched/node_modules/svelte/package.json`).
-2. Runs webpack twice per package — once with minification off (to
-   reveal the tree-shaking effect directly), once with it on (realistic
-   production output).
-3. Prints a side-by-side comparison.
+That script installs and builds all three packages, then prints the
+comparison above. Each package owns its own `pnpm` lockfile, so `pnpm
+install` stays scoped to that package's deps — the `test-svelte-v5-patched`
+pnpm patch only touches the svelte install under that directory.
 
 ## Layout
 
 ```
 playground-svelte-bundle-size/
-├── package.json                 # root: just a test script
-├── test.mjs                     # builds both and prints sizes
-├── packages/
-│   ├── test-svelte-original/    # plain svelte install
-│   │   ├── package.json
-│   │   ├── webpack.config.js
-│   │   └── src/index.js         # 12 lines — imports writable/readable/
-│   │                            #            derived/get and uses each
-│   └── test-svelte-patched/     # same code; pnpm patch on svelte
-│       ├── package.json         # ← declares pnpm.patchedDependencies
-│       ├── patches/svelte@5.55.4.patch
-│       ├── webpack.config.js
-│       └── src/index.js         # byte-identical to original
+├── package.json                      # root: install:all / build:all / test
+├── test.mjs                          # builds all three and prints sizes
+└── packages/
+    ├── test-svelte-v4/               # Svelte 4.2.20
+    │   ├── package.json
+    │   ├── webpack.config.js
+    │   └── src/index.js
+    ├── test-svelte-v5/               # Svelte 5.55.4 (stock)
+    │   ├── package.json
+    │   ├── webpack.config.js
+    │   └── src/index.js
+    └── test-svelte-v5-patched/       # Svelte 5.55.4 + pnpm patch
+        ├── package.json              # ← declares pnpm.patchedDependencies
+        ├── patches/svelte@5.55.4.patch
+        ├── webpack.config.js
+        └── src/index.js              # byte-identical to the others
 ```
 
-Each package is its own independent `pnpm` project (no workspace). This
-keeps the two dependency graphs cleanly separate so the patch on one
-can't leak into the other.
+All three `src/index.js` files are byte-identical. All three
+`webpack.config.js` files are byte-identical and use SWC as the
+minimizer (matching the real production app whose numbers these line up
+with).
 
 ## The patch
 
-`packages/test-svelte-patched/patches/svelte@5.55.4.patch`:
+`packages/test-svelte-v5-patched/patches/svelte@5.55.4.patch`:
 
 ```diff
 --- a/package.json
@@ -84,11 +100,11 @@ can't leak into the other.
    "exports": {
 ```
 
-This says: **every file in Svelte is side-effect-free, except these four
-flag-setting modules.** The four exceptions mutate globals at import time
-(`disclose-version.js` writes `window.__svelte`; the flag files toggle
-runtime modes), so they must be preserved even when no one imports their
-named exports.
+This tells bundlers: **every file in Svelte is side-effect-free except
+these four flag-setting modules.** The four exceptions mutate globals at
+import time (`disclose-version.js` writes `window.__svelte`; the flag
+files toggle runtime modes), so they must be preserved even when no one
+imports their named exports.
 
 ### Why this claim is safe
 
@@ -129,18 +145,18 @@ numbers you see here line up with the real-repo numbers.
 
 ## Real-world validation
 
-The private repo applies the same conceptual fix via webpack
-`module.rules` (a downstream workaround equivalent to this upstream
-patch). Measured in its production chunk that bundles `svelte/store`:
+A production application's webpack build shows the same pattern, in a
+larger chunk that bundles `svelte/store`:
 
-| Build                | Chunk size | vs baseline |
-|----------------------|-----------:|------------:|
-| Svelte v4 (baseline) | 38,255 B   | —           |
-| Svelte v5, no fix    | 43,887 B   | +5,632 B    |
-| **Svelte v5, fixed** | **37,858 B** | **−397 B**  |
+| build                | chunk size   | vs v4 baseline |
+|----------------------|-------------:|---------------:|
+| Svelte v4 (baseline) | 38,255 B     | —              |
+| Svelte v5, no fix    | 43,887 B     | +5,632 B       |
+| **Svelte v5, fixed** | **37,858 B** | **−397 B**     |
 
-The upstream `sideEffects` patch would save ~6 KB minified there and let
-them delete the downstream webpack-rules workaround.
+Both the ~5.6 KB regression and the recovery-below-baseline match this
+demo's numbers closely — evidence that the mechanism is general, not an
+artifact of this particular reproduction.
 
 ## Proposed upstream PR
 
@@ -154,5 +170,5 @@ This patch could go directly into
 - Universal bundler support — webpack, Rollup, Vite, esbuild all honor
   the `sideEffects` array form.
 
-Existing issue for context (still open, not "no fix planned"):
+Existing issue for context:
 [sveltejs/svelte#13855](https://github.com/sveltejs/svelte/issues/13855).

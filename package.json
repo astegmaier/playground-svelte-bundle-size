@@ -2,10 +2,10 @@
   "name": "playground-svelte-bundle-size",
   "version": "1.0.0",
   "private": true,
-  "description": "Demonstrates the bundle-size savings of adding a 'sideEffects' field to svelte's package.json.",
+  "description": "Demonstrates the bundle-size impact of the svelte v4 → v5 upgrade and the recovery from adding a 'sideEffects' field to svelte's package.json.",
   "scripts": {
-    "install:all": "cd packages/test-svelte-original && pnpm install && cd ../test-svelte-patched && pnpm install",
-    "build:all": "cd packages/test-svelte-original && pnpm build && cd ../test-svelte-patched && pnpm build",
+    "install:all": "cd packages/test-svelte-v4 && pnpm install && cd ../test-svelte-v5 && pnpm install && cd ../test-svelte-v5-patched && pnpm install",
+    "build:all": "cd packages/test-svelte-v4 && pnpm build && cd ../test-svelte-v5 && pnpm build && cd ../test-svelte-v5-patched && pnpm build",
     "test": "node test.mjs"
   }
 }

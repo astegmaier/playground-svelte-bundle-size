@@ -1,8 +1,8 @@
 {
-  "name": "test-svelte-original",
+  "name": "test-svelte-v5",
   "version": "1.0.0",
   "private": true,
-  "description": "Bundles svelte/store with a stock install of svelte (no patch).",
+  "description": "Bundles svelte/store with a stock install of Svelte 5 (no patch).",
   "scripts": {
     "build": "rm -rf dist && webpack --env raw && webpack"
   },
