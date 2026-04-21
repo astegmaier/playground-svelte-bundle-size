@@ -19,22 +19,10 @@ install they pull in:
 | `test-svelte-v5`         | 5.55.4 (stock)                   |
 | `test-svelte-v5-patched` | 5.55.4 + `sideEffects` patch     |
 
-```
- metric                 svelte v4         svelte v5        v5 patched
- ────────────────────────────────────────────────────────────────────
- tree-shaken      113,590 B         273,632 B          35,913 B
- minified           2,000 B           7,726 B           1,490 B
-
-  vs. svelte v4 baseline (minified):
-    svelte v4              0 B (0.0%)
-    svelte v5      +   5,726 B (286.3%)
-    v5 patched     −     510 B (-25.5%)
-
-  vs. svelte v5 unpatched (minified):
-    svelte v4      −   5,726 B (-74.1%)
-    svelte v5              0 B (0.0%)
-    v5 patched     −   6,236 B (-80.7%)
-```
+| metric      | svelte v4 (baseline) | svelte v5              | v5 patched            |
+| ----------- | -------------------: | ---------------------: | --------------------: |
+| tree-shaken |          113,590 B   | 273,632 B (+140.9%)    | 35,913 B (−68.4%)     |
+| minified    |            2,000 B   |   7,726 B (+286.3%)    |  1,490 B (−25.5%)     |
 
 Upgrading from Svelte 4 to Svelte 5 adds **5.7 KB** minified to this
 bundle — because v5 rebuilt its stores on top of the signals runtime,
