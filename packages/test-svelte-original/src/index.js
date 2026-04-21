@@ -1,61 +1,53 @@
-// Mirrors how a private repo uses svelte: as a reactive store library,
-// called from non-svelte code, across several independent consumer modules.
-// Each consumer mimics a real call site (auth, routing, theming, etc.)
-// to keep multiple store code paths live and prevent terser from inlining
-// everything down to constants.
-import { writable, readable, derived, get } from 'svelte/store';
+import { createAuthStore } from './stores/authStore.js';
+import { createRouterStore } from './stores/routerStore.js';
+import { createThemeStore } from './stores/themeStore.js';
+import { createWorkspacesStore } from './stores/workspacesStore.js';
+import { createPagesStore } from './stores/pagesStore.js';
 
-// --- auth-like module -----------------------------------------------------
-const token = writable(null);
-const isSignedIn = derived(token, ($token) => $token !== null);
-function signIn(value) {
-  token.set(value);
-}
-function signOut() {
-  token.set(null);
-}
+import { renderAuth } from './components/authConsumer.js';
+import { renderRouter } from './components/routerConsumer.js';
+import { renderTheme } from './components/themeConsumer.js';
+import { renderWorkspaces } from './components/workspacesConsumer.js';
+import { renderPages } from './components/pagesConsumer.js';
 
-// --- router-like module ---------------------------------------------------
-const route = writable({ path: '/', params: {} });
-const currentPath = derived(route, ($route) => $route.path);
-function navigate(path, params = {}) {
-  route.update((prev) => ({ ...prev, path, params }));
-}
+const fakeWorkspaceModel = {
+  listeners: new Set(),
+  on(_evt, fn) { this.listeners.add(fn); },
+  off(_evt, fn) { this.listeners.delete(fn); },
+  fetch: async () => [{ id: 'w1', name: 'Team' }],
+};
 
-// --- theme-like module ----------------------------------------------------
-const theme = writable('light');
-const isDark = derived(theme, ($theme) => $theme === 'dark');
-function toggleTheme() {
-  theme.update((current) => (current === 'light' ? 'dark' : 'light'));
-}
+const initialIdentity = location.hash ? { id: location.hash.slice(1) } : null;
+const initialTheme = document.cookie.includes('dark') ? 'dark' : 'light';
 
-// --- clock-like module ----------------------------------------------------
-const clock = readable(new Date(), (set) => {
-  const id = setInterval(() => set(new Date()), 1000);
-  return () => clearInterval(id);
-});
+const authStore = createAuthStore(initialIdentity);
+const routerStore = createRouterStore();
+const themeStore = createThemeStore(initialTheme);
+const workspacesStore = createWorkspacesStore(fakeWorkspaceModel);
+const pagesStore = createPagesStore();
 
-// --- combined view --------------------------------------------------------
-const appState = derived(
-  [isSignedIn, currentPath, isDark],
-  ([$signedIn, $path, $dark]) => ({ signedIn: $signedIn, path: $path, dark: $dark }),
-);
+const element = {};
+const unsubscribers = [
+  renderAuth(authStore, element),
+  renderRouter(routerStore, element),
+  renderTheme(themeStore, element),
+  renderWorkspaces(workspacesStore, element),
+  renderPages(pagesStore, element),
+];
 
-// Exercise the API surface so webpack keeps each store alive.
-signIn('abc');
-navigate('/home');
-toggleTheme();
+const driver = JSON.parse(location.search.slice(1) || '{"id":"user-1","path":"/home"}');
+authStore.signIn({ id: driver.id });
+routerStore.navigate(driver.path);
+themeStore.toggle();
+workspacesStore.refresh();
+pagesStore.add({ id: 'p1', title: 'Hello' });
 
-// Assign to window so nothing gets tree-shaken away as completely unused.
 window.__demo = {
-  token,
-  isSignedIn,
-  route,
-  currentPath,
-  theme,
-  isDark,
-  clock,
-  appState,
-  actions: { signIn, signOut, navigate, toggleTheme },
-  snapshot: get(appState),
+  element,
+  authStore,
+  routerStore,
+  themeStore,
+  workspacesStore,
+  pagesStore,
+  unsubscribers,
 };

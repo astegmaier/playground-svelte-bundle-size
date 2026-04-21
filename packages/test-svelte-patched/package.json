@@ -4,12 +4,14 @@
   "private": true,
   "description": "Identical to test-svelte-original, but installs svelte with a pnpm patch that adds a 'sideEffects' array to svelte's package.json.",
   "scripts": {
-    "build": "webpack --env raw && webpack"
+    "build": "rm -rf dist && webpack --env raw && webpack"
   },
   "dependencies": {
     "svelte": "5.55.4"
   },
   "devDependencies": {
+    "@swc/core": "^1.10.0",
+    "terser-webpack-plugin": "^5.3.10",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4"
   },

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Builds both packages (minified + unminified) and prints bundle sizes.
+// Builds both packages and prints total dist sizes.
 
 import { execSync } from 'node:child_process';
-import { statSync } from 'node:fs';
+import { statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -17,11 +17,15 @@ for (const pkg of packages) {
   execSync('pnpm build', { cwd, stdio: 'inherit' });
 }
 
-const size = (pkg, file) =>
-  statSync(join(here, 'packages', pkg, 'dist', file)).size;
+const sumBy = (pkg, suffix) => {
+  const dir = join(here, 'packages', pkg, 'dist');
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(suffix))
+    .reduce((sum, f) => sum + statSync(join(dir, f)).size, 0);
+};
 
-const raw = packages.map((pkg) => size(pkg, 'bundle.unminified.js'));
-const min = packages.map((pkg) => size(pkg, 'bundle.min.js'));
+const raw = packages.map((pkg) => sumBy(pkg, '.unminified.js'));
+const min = packages.map((pkg) => sumBy(pkg, '.min.js'));
 const fmt = (n) => n.toLocaleString();
 const pct = (from, to) => (((from - to) / from) * 100).toFixed(1);
 
@@ -34,9 +38,7 @@ console.log(row('tree-shaken', raw[0], raw[1]));
 console.log(row('minified', min[0], min[1]));
 console.log();
 console.log('  tree-shaken = bytes webpack kept after tree-shaking, before');
-console.log('                terser ran. Shows the sideEffects impact directly.');
-console.log('  minified    = realistic production output. Understated here');
-console.log('                because terser can DCE most unreachable code in');
-console.log('                a tiny self-contained bundle. Scales up in large');
-console.log('                apps (a private repo saw ~6 KB minified savings).');
+console.log('                the minifier ran. Direct signal of sideEffects.');
+console.log('  minified    = realistic production output, minified with SWC');
+console.log('                (matching the private-repo minifier).');
 console.log();

@@ -15,16 +15,15 @@ v5 runtime.
 ```
   metric          original         patched       savings
   ─────────────────────────────────────────────────────────────
-  tree-shaken        275,329 B       37,610 B     237,719 B   (86.3%)
-  minified             2,653 B        2,214 B         439 B   (16.5%)
+  tree-shaken        280,760 B       43,041 B     237,719 B   (84.7%)
+  minified            10,412 B        4,021 B       6,391 B   (61.4%)
 ```
 
 The **tree-shaken** row is the direct signature of the patch working:
-webpack drops 237 KB of Svelte source from the module graph. The
-**minified** delta is smaller here because terser can eliminate most
-unreachable code in a tiny, fully-inlineable demo bundle. The same
-mechanism saves ~6 KB minified in a real-world app (see the private
-repo measurements below).
+webpack drops 238 KB of Svelte source from the module graph. The
+**minified** row shows the realistic production savings: 6.4 KB, in the
+same ballpark as the ~6 KB minified savings observed in the original
+private-repo measurements.
 
 ## Run it
 
@@ -35,29 +34,33 @@ pnpm test
 That script:
 
 1. Runs `pnpm install` in each package (applies the patch for the
-   patched one — you can verify with
+   patched one — verify with
    `cat packages/test-svelte-patched/node_modules/svelte/package.json`).
-2. Runs `webpack --mode production` twice per package — once with
-   minification off (to reveal the tree-shaking effect), once with it
-   on (realistic production output).
+2. Runs webpack twice per package — once with minification off (to
+   reveal the tree-shaking effect directly), once with it on (realistic
+   production output).
 3. Prints a side-by-side comparison.
 
 ## Layout
 
 ```
 playground-svelte-bundle-size/
-├── package.json               # root: just a test script
-├── test.mjs                   # builds both and prints sizes
+├── package.json                 # root: just a test script
+├── test.mjs                     # builds both and prints sizes
 ├── packages/
-│   ├── test-svelte-original/  # plain svelte install
+│   ├── test-svelte-original/    # plain svelte install
 │   │   ├── package.json
 │   │   ├── webpack.config.js
-│   │   └── src/index.js
-│   └── test-svelte-patched/   # same code; pnpm patch on svelte
-│       ├── package.json       # ← declares pnpm.patchedDependencies
+│   │   └── src/
+│   │       ├── index.js
+│   │       ├── stores/          # store factories (auth, router, theme, …)
+│   │       ├── components/      # consumers that call .subscribe()
+│   │       └── hooks/           # useSyncExternalStore-style adapter
+│   └── test-svelte-patched/     # same code; pnpm patch on svelte
+│       ├── package.json         # ← declares pnpm.patchedDependencies
 │       ├── patches/svelte@5.55.4.patch
 │       ├── webpack.config.js
-│       └── src/index.js
+│       └── src/                 # byte-identical to original
 ```
 
 Each package is its own independent `pnpm` project (no workspace). This
@@ -100,31 +103,43 @@ empty. The upstream contract matches the `sideEffects` declaration
 exactly — the patch just tells webpack what Rollup's CI has been
 enforcing all along.
 
-## What the usage in `src/index.js` demonstrates
+## What the demo code demonstrates
 
 The demo mirrors how a private repo uses Svelte: only as a reactive
-store library, called from non-Svelte code. Zero `.svelte` files. The
-consumers (`auth`, `router`, `theme`, `clock`) each use a subset of
-`writable` / `readable` / `derived` / `get` — the same four functions
-the real codebase imports.
+store library, called from non-Svelte code. Zero `.svelte` files. Store
+factories live in `src/stores/` (auth, router, theme, workspaces, pages)
+and return `{ subscribe, … }` wrappers. Consumer modules in
+`src/components/` receive the stores as parameters and subscribe via a
+`useSyncExternalStore`-style helper in `src/hooks/subscribeExternal.js`.
+This is the pattern the real codebase uses to bridge Svelte stores to
+React.
 
-## Why the numbers differ between minified and tree-shaken
+The demo imports exactly what the real codebase imports from
+`svelte/store` (`writable`, `readable`, `derived`, `get`) and nothing
+else.
 
-- **Tree-shaken** (275 KB → 38 KB): the raw webpack output before terser.
-  Shows exactly which modules the bundler kept. The patch reduces Svelte
-  source going into the bundle from 241 KB to 33 KB. This is the
-  sideEffects mechanism doing its job.
-- **Minified** (2.6 KB → 2.2 KB): after terser. In a tiny self-contained
-  demo like this, terser can prove most of the unused code unreachable
-  through inlining alone, so the sideEffects hint adds only a marginal
-  improvement. Terser can't do this in a large app with many modules,
-  chunks, and consumer variations.
+## Why the minifier choice matters
+
+The biggest factor in reproducing the 6 KB minified savings was matching
+the real project's minifier. webpack's default minifier is **terser**,
+which is extremely aggressive at cross-module dead-code elimination — in
+a small self-contained bundle, terser can eliminate almost everything
+that `sideEffects` would have eliminated anyway, leaving only ~440 B of
+visible savings.
+
+The private repo uses **SWC** via `TerserPlugin.swcMinify`. SWC is
+faster but less aggressive at DCE across module boundaries. More
+unreachable code survives into the final bundle, which is exactly the
+code that `sideEffects` lets webpack remove earlier in the pipeline.
+
+This demo's `webpack.config.js` uses the same SWC minifier, so the
+numbers you see here line up with the real-repo numbers.
 
 ## Real-world validation
 
-A private repo applies the same conceptual fix via webpack `module.rules`
-(a downstream workaround equivalent to this upstream patch). Measured in
-its production chunk that bundles `svelte/store`:
+The private repo applies the same conceptual fix via webpack
+`module.rules` (a downstream workaround equivalent to this upstream
+patch). Measured in its production chunk that bundles `svelte/store`:
 
 | Build                | Chunk size | vs baseline |
 |----------------------|-----------:|------------:|
