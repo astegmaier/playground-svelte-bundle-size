@@ -1,0 +1,16 @@
+{
+  "name": "test-svelte-original",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bundles svelte/store with a stock install of svelte (no patch).",
+  "scripts": {
+    "build": "webpack --env raw && webpack"
+  },
+  "dependencies": {
+    "svelte": "5.55.4"
+  },
+  "devDependencies": {
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  }
+}

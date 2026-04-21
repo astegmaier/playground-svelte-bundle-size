@@ -1,0 +1,11 @@
+{
+  "name": "playground-svelte-bundle-size",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demonstrates the bundle-size savings of adding a 'sideEffects' field to svelte's package.json.",
+  "scripts": {
+    "install:all": "cd packages/test-svelte-original && pnpm install && cd ../test-svelte-patched && pnpm install",
+    "build:all": "cd packages/test-svelte-original && pnpm build && cd ../test-svelte-patched && pnpm build",
+    "test": "node test.mjs"
+  }
+}

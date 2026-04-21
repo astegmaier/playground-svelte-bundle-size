@@ -1,0 +1,21 @@
+{
+  "name": "test-svelte-patched",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Identical to test-svelte-original, but installs svelte with a pnpm patch that adds a 'sideEffects' array to svelte's package.json.",
+  "scripts": {
+    "build": "webpack --env raw && webpack"
+  },
+  "dependencies": {
+    "svelte": "5.55.4"
+  },
+  "devDependencies": {
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "svelte@5.55.4": "patches/svelte@5.55.4.patch"
+    }
+  }
+}
